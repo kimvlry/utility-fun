@@ -8,3 +8,9 @@ This Go module retrieves and prints the **current precise time** using an NTP se
 - The program will exit with a non-zero status code if any errors occur during NTP time retrieval.
 - Passes `vet` and `golint` checks
 - Comprehensive unit test coverage
+
+## Example usage:
+```bash
+go build -o ntp 
+./ntp -timeout 1s
+```
