@@ -7,6 +7,8 @@ import (
 )
 
 func runWithArgs(t *testing.T, args ...string) (stdout string, err error) {
+	t.Helper()
+
 	bin := "./ntpnow_test_bin"
 	build := exec.Command("go", "build", "-o", bin)
 	if err := build.Run(); err != nil {
