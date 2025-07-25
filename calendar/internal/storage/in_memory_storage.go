@@ -178,7 +178,7 @@ func (c *InMemoryStorage) GetEventsForMonth(userId int, date models.Date) ([]mod
 		return nil, NewUserHasNoEventsError(userId)
 	}
 
-	year, month := date.Time.Year(), date.Time.Month()
+	year, month := date.Year(), date.Month()
 	start := time.Date(year, month, 1, 0, 0, 0, 0, time.UTC)
 	end := start.AddDate(0, 1, 0)
 

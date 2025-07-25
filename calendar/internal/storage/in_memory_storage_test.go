@@ -82,10 +82,16 @@ func TestDeleteEvent(t *testing.T) {
 	event1 := makeEvent(30, userId, "2025-07-27", "08:00", "Event 1")
 	event2 := makeEvent(31, userId, "2025-07-27", "10:00", "Event 2")
 
-	store.CreateEvent(userId, event1)
-	store.CreateEvent(userId, event2)
+	err := store.CreateEvent(userId, event1)
+	if err != nil {
+		t.Fatalf("CreateEvent failed: %v", err)
+	}
+	err = store.CreateEvent(userId, event2)
+	if err != nil {
+		t.Fatalf("CreateEvent failed: %v", err)
+	}
 
-	err := store.DeleteEvent(userId, date, 30)
+	err = store.DeleteEvent(userId, date, 30)
 	if err != nil {
 		t.Fatalf("DeleteEvent failed: %v", err)
 	}
@@ -110,7 +116,10 @@ func TestGetEventsForDay(t *testing.T) {
 	date := parseDate("2025-07-28")
 
 	event := makeEvent(40, userId, "2025-07-28", "12:00", "Day event")
-	store.CreateEvent(userId, event)
+	err := store.CreateEvent(userId, event)
+	if err != nil {
+		t.Fatalf("CreateEvent failed: %v", err)
+	}
 
 	events, err := store.GetEventsForDay(userId, date)
 	if err != nil {
@@ -131,10 +140,16 @@ func TestGetEventsForWeek(t *testing.T) {
 	userId := 5
 
 	eventMon := makeEvent(50, userId, "2025-07-21", "09:00", "Monday event")
-	store.CreateEvent(userId, eventMon)
+	err := store.CreateEvent(userId, eventMon)
+	if err != nil {
+		t.Fatalf("CreateEvent failed: %v", err)
+	}
 
 	eventSun := makeEvent(51, userId, "2025-07-27", "18:00", "Sunday event")
-	store.CreateEvent(userId, eventSun)
+	err = store.CreateEvent(userId, eventSun)
+	if err != nil {
+		t.Fatalf("CreateEvent failed: %v", err)
+	}
 
 	events, err := store.GetEventsForWeek(userId, parseDate("2025-07-23"))
 	if err != nil {
@@ -154,9 +169,18 @@ func TestGetEventsForMonth(t *testing.T) {
 	event2 := makeEvent(61, userId, "2025-07-15", "15:00", "Event July 15")
 	event3 := makeEvent(62, userId, "2025-08-01", "09:00", "Event August 1")
 
-	store.CreateEvent(userId, event1)
-	store.CreateEvent(userId, event2)
-	store.CreateEvent(userId, event3)
+	err := store.CreateEvent(userId, event1)
+	if err != nil {
+		t.Fatalf("CreateEvent failed: %v", err)
+	}
+	err = store.CreateEvent(userId, event2)
+	if err != nil {
+		t.Fatalf("CreateEvent failed: %v", err)
+	}
+	err = store.CreateEvent(userId, event3)
+	if err != nil {
+		t.Fatalf("CreateEvent failed: %v", err)
+	}
 
 	events, err := store.GetEventsForMonth(userId, parseDate("2025-07-20"))
 	if err != nil {

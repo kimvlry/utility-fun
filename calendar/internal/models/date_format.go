@@ -9,5 +9,5 @@ type Date struct {
 
 // String returns the Date formatted as YYYY-MM-DD.
 func (d Date) String() string {
-	return d.Time.Format(time.DateOnly)
+	return d.Format(time.DateOnly)
 }
