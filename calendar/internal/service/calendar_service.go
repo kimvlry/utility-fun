@@ -1,4 +1,3 @@
-// internal/service/calendar.go
 package service
 
 import (
