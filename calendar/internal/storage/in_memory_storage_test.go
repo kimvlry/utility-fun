@@ -1,3 +1,4 @@
+// internal/storage/in_memory_storage_test.go
 package storage_test
 
 import (
@@ -12,182 +13,122 @@ func parseDate(dateStr string) models.Date {
 	return models.Date{Time: t}
 }
 
-func parseTime(timeStr string) models.Time {
-	t, _ := time.Parse("15:04", timeStr)
-	return models.Time{Time: t}
-}
-
-func makeEvent(id, userId int, dateStr, timeStr, desc string) models.Event {
+func makeEvent(id, userId int, dateStr, desc string) models.Event {
 	return models.Event{
 		Id:          id,
 		UserId:      userId,
 		Date:        parseDate(dateStr),
-		Time:        parseTime(timeStr),
 		Description: desc,
 	}
 }
 
-func TestCreateDuplicateEvent(t *testing.T) {
-	store := storage.NewInMemoryStorage(true)
+func TestSaveDuplicateEvent(t *testing.T) {
+	store := storage.NewInMemoryStorage()
 	userId := 1
-	event := makeEvent(10, userId, "2025-07-25", "14:30", "Test event")
+	e := makeEvent(10, userId, "2025-07-25", "Test event")
 
-	err := store.CreateEvent(userId, event)
-	if err != nil {
-		t.Fatalf("CreateEvent failed: %v", err)
+	if err := store.SaveEvent(userId, e); err != nil {
+		t.Fatalf("SaveEvent failed: %v", err)
 	}
-
-	err = store.CreateEvent(userId, event)
-	if err == nil {
-		t.Fatalf("Expected error when creating duplicate event, got nil")
+	if err := store.SaveEvent(userId, e); err == nil {
+		t.Fatalf("Expected error when saving duplicate, got nil")
 	}
 }
 
-func TestUpdateEvent(t *testing.T) {
-	store := storage.NewInMemoryStorage(true)
+func TestUpdateNonExistingEvent(t *testing.T) {
+	store := storage.NewInMemoryStorage()
 	userId := 2
-	event := makeEvent(20, userId, "2025-07-26", "09:00", "Original event")
-
-	err := store.CreateEvent(userId, event)
-	if err != nil {
-		t.Fatalf("CreateEvent failed: %v", err)
+	e := makeEvent(20, userId, "2025-07-26", "Original")
+	if err := store.SaveEvent(userId, e); err != nil {
+		t.Fatalf("SaveEvent failed: %v", err)
 	}
 
-	event.Description = "Updated event"
-	err = store.UpdateEvent(userId, event)
-	if err != nil {
+	e.Description = "Updated"
+	if err := store.UpdateEvent(userId, e); err != nil {
 		t.Fatalf("UpdateEvent failed: %v", err)
 	}
 
-	events, err := store.GetEventsForDay(userId, parseDate("2025-07-26"))
+	from := parseDate("2025-07-26").Time
+	evs, err := store.GetEvents(userId, from, from)
 	if err != nil {
-		t.Fatalf("GetEventsForDay failed: %v", err)
+		t.Fatalf("GetEvents failed: %v", err)
 	}
-	if len(events) != 1 || events[0].Description != "Updated event" {
-		t.Fatalf("Event not updated correctly, got: %+v", events)
+	if len(evs) != 1 || evs[0].Description != "Updated" {
+		t.Fatalf("Update did not apply, got: %+v", evs)
 	}
 
-	fakeEvent := makeEvent(999, userId, "2025-07-26", "10:00", "Fake event")
-	err = store.UpdateEvent(userId, fakeEvent)
-	if err == nil {
-		t.Fatalf("Expected error when updating non-existent event, got nil")
+	eInvalid := makeEvent(999, userId, "2025-07-26", "Nope")
+	if err := store.UpdateEvent(userId, eInvalid); err == nil {
+		t.Fatalf("Expected error updating nonexistent event, got nil")
 	}
 }
 
-func TestDeleteEvent(t *testing.T) {
-	store := storage.NewInMemoryStorage(true)
+func TestDeleteNonExistingEvent(t *testing.T) {
+	store := storage.NewInMemoryStorage()
 	userId := 3
 	date := parseDate("2025-07-27")
+	e1 := makeEvent(30, userId, "2025-07-27", "One")
+	e2 := makeEvent(31, userId, "2025-07-27", "Two")
+	_ = store.SaveEvent(userId, e1)
+	_ = store.SaveEvent(userId, e2)
 
-	event1 := makeEvent(30, userId, "2025-07-27", "08:00", "Event 1")
-	event2 := makeEvent(31, userId, "2025-07-27", "10:00", "Event 2")
-
-	err := store.CreateEvent(userId, event1)
-	if err != nil {
-		t.Fatalf("CreateEvent failed: %v", err)
-	}
-	err = store.CreateEvent(userId, event2)
-	if err != nil {
-		t.Fatalf("CreateEvent failed: %v", err)
-	}
-
-	err = store.DeleteEvent(userId, date, 30)
-	if err != nil {
+	if err := store.DeleteEvent(userId, date, 30); err != nil {
 		t.Fatalf("DeleteEvent failed: %v", err)
 	}
-
-	events, err := store.GetEventsForDay(userId, date)
+	from := date.Time
+	evs, err := store.GetEvents(userId, from, from)
 	if err != nil {
-		t.Fatalf("GetEventsForDay failed: %v", err)
+		t.Fatalf("GetEvents failed: %v", err)
 	}
-	if len(events) != 1 || events[0].Id != 31 {
-		t.Fatalf("DeleteEvent did not remove correct event, got: %+v", events)
+	if len(evs) != 1 || evs[0].Id != 31 {
+		t.Fatalf("Expected only event 31 after delete, got %v", evs)
 	}
 
-	err = store.DeleteEvent(userId, date, 999)
-	if err == nil {
-		t.Fatalf("Expected error when deleting non-existent event, got nil")
+	if err := store.DeleteEvent(userId, date, 999); err == nil {
+		t.Fatalf("Expected error deleting nonexistent, got nil")
 	}
 }
 
-func TestGetEventsForDay(t *testing.T) {
-	store := storage.NewInMemoryStorage(true)
+func TestGetEventsRange(t *testing.T) {
+	store := storage.NewInMemoryStorage()
 	userId := 4
-	date := parseDate("2025-07-28")
 
-	event := makeEvent(40, userId, "2025-07-28", "12:00", "Day event")
-	err := store.CreateEvent(userId, event)
+	err := store.SaveEvent(userId, makeEvent(1, userId, "2025-07-10", "A"))
 	if err != nil {
-		t.Fatalf("CreateEvent failed: %v", err)
+		return
 	}
-
-	events, err := store.GetEventsForDay(userId, date)
+	err = store.SaveEvent(userId, makeEvent(2, userId, "2025-07-15", "B"))
 	if err != nil {
-		t.Fatalf("GetEventsForDay failed: %v", err)
+		return
 	}
-	if len(events) != 1 || events[0].Id != 40 {
-		t.Fatalf("GetEventsForDay returned wrong events, got: %+v", events)
+	err = store.SaveEvent(userId, makeEvent(3, userId, "2025-07-20", "C"))
+	if err != nil {
+		return
 	}
 
-	_, err = store.GetEventsForDay(userId, parseDate("2025-07-29"))
-	if err == nil {
-		t.Fatalf("Expected error for no events on date, got nil")
+	from := parseDate("2025-07-11").Time
+	to := parseDate("2025-07-18").Time
+	evs, err := store.GetEvents(userId, from, to)
+	if err != nil {
+		t.Fatalf("GetEvents failed: %v", err)
+	}
+	if len(evs) != 1 || evs[0].Id != 2 {
+		t.Fatalf("Expected [2], got ids=%v", extractIds(evs))
+	}
+
+	evs, err = store.GetEvents(userId, parseDate("2025-07-10").Time, parseDate("2025-07-20").Time)
+	if err != nil {
+		t.Fatalf("GetEvents failed: %v", err)
+	}
+	if len(evs) != 3 {
+		t.Fatalf("Expected 3 events, got %d", len(evs))
 	}
 }
 
-func TestGetEventsForWeek(t *testing.T) {
-	store := storage.NewInMemoryStorage(true)
-	userId := 5
-
-	eventMon := makeEvent(50, userId, "2025-07-21", "09:00", "Monday event")
-	err := store.CreateEvent(userId, eventMon)
-	if err != nil {
-		t.Fatalf("CreateEvent failed: %v", err)
+func extractIds(evs []models.Event) []int {
+	ids := make([]int, len(evs))
+	for i, e := range evs {
+		ids[i] = e.Id
 	}
-
-	eventSun := makeEvent(51, userId, "2025-07-27", "18:00", "Sunday event")
-	err = store.CreateEvent(userId, eventSun)
-	if err != nil {
-		t.Fatalf("CreateEvent failed: %v", err)
-	}
-
-	events, err := store.GetEventsForWeek(userId, parseDate("2025-07-23"))
-	if err != nil {
-		t.Fatalf("GetEventsForWeek failed: %v", err)
-	}
-
-	if len(events) != 2 {
-		t.Fatalf("Expected 2 events in week, got %d", len(events))
-	}
-}
-
-func TestGetEventsForMonth(t *testing.T) {
-	store := storage.NewInMemoryStorage(true)
-	userId := 6
-
-	event1 := makeEvent(60, userId, "2025-07-10", "10:00", "Event July 10")
-	event2 := makeEvent(61, userId, "2025-07-15", "15:00", "Event July 15")
-	event3 := makeEvent(62, userId, "2025-08-01", "09:00", "Event August 1")
-
-	err := store.CreateEvent(userId, event1)
-	if err != nil {
-		t.Fatalf("CreateEvent failed: %v", err)
-	}
-	err = store.CreateEvent(userId, event2)
-	if err != nil {
-		t.Fatalf("CreateEvent failed: %v", err)
-	}
-	err = store.CreateEvent(userId, event3)
-	if err != nil {
-		t.Fatalf("CreateEvent failed: %v", err)
-	}
-
-	events, err := store.GetEventsForMonth(userId, parseDate("2025-07-20"))
-	if err != nil {
-		t.Fatalf("GetEventsForMonth failed: %v", err)
-	}
-
-	if len(events) != 2 {
-		t.Fatalf("Expected 2 events in July, got %d", len(events))
-	}
+	return ids
 }

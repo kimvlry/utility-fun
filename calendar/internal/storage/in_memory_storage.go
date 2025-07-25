@@ -1,34 +1,37 @@
 package storage
 
 import (
-	"http_calendar/internal/models"
 	"sync"
 	"time"
+
+	"http_calendar/internal/models"
 )
 
-// InMemoryStorage is an in-memory implementation of Storage interface.
-// Stores events by userId and date string (YYYY-MM-DD).
+// InMemoryStorage provides a thread-safe, in-memory implementation of the Storage interface.
+// It stores events in a nested map structure: userId → date string → slice of Event.
+// Date strings use the format YYYY-MM-DD (models.Date.String()).
 type InMemoryStorage struct {
-	mu              sync.RWMutex
-	records         map[int]map[string][]models.Event // string represents models.Date string
-	mondayBasedWeek bool                              // true if week starts on Monday
+	mu      sync.RWMutex                      // protects records for concurrent access
+	records map[int]map[string][]models.Event // records[userId][dateKey] = []Event
 }
 
-func NewInMemoryStorage(mondayBasedWeek bool) *InMemoryStorage {
+// NewInMemoryStorage initializes and returns a new InMemoryStorage instance.
+func NewInMemoryStorage() *InMemoryStorage {
 	return &InMemoryStorage{
-		records:         make(map[int]map[string][]models.Event),
-		mondayBasedWeek: mondayBasedWeek,
+		records: make(map[int]map[string][]models.Event),
 	}
 }
 
-// CreateEvent adds a new event if no event with the same Id exists on that date.
-func (c *InMemoryStorage) CreateEvent(userId int, event models.Event) error {
+// SaveEvent adds a new event for the given userId on event.Date.
+// Returns an error if an event with the same Id already exists on that date.
+// Complexity: O(n) scan of events on that date.
+func (c *InMemoryStorage) SaveEvent(userId int, event models.Event) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	dateKey := event.Date.String()
 
-	if _, ok := c.records[userId]; !ok {
+	if _, exists := c.records[userId]; !exists {
 		c.records[userId] = make(map[string][]models.Event)
 	}
 
@@ -39,156 +42,100 @@ func (c *InMemoryStorage) CreateEvent(userId int, event models.Event) error {
 		}
 	}
 
-	c.records[userId][dateKey] = append(c.records[userId][dateKey], event)
+	c.records[userId][dateKey] = append(eventsOnDate, event)
 	return nil
 }
 
-// UpdateEvent updates an existing event identified by Id on the given date.
+// UpdateEvent modifies an existing event identified by event.Id for the given userId on event.Date.
+// Returns an error if the user has no events or the event is not found on that date.
 func (c *InMemoryStorage) UpdateEvent(userId int, event models.Event) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	dateKey := event.Date.String()
 
-	if _, ok := c.records[userId]; !ok {
+	userDates, exists := c.records[userId]
+	if !exists {
 		return NewUserHasNoEventsError(userId)
 	}
 
-	eventsOnDate, ok := c.records[userId][dateKey]
-	if !ok {
+	eventsOnDate, exists := userDates[dateKey]
+	if !exists {
 		return NewEventNotFoundError(event.Id)
 	}
 
-	updated := false
 	for i, e := range eventsOnDate {
 		if e.Id == event.Id {
 			eventsOnDate[i] = event
-			updated = true
-			break
+			c.records[userId][dateKey] = eventsOnDate
+			return nil
 		}
 	}
-	if !updated {
-		return NewEventNotFoundError(event.Id)
-	}
-
-	c.records[userId][dateKey] = eventsOnDate
-	return nil
+	return NewEventNotFoundError(event.Id)
 }
 
-// DeleteEvent deletes an event by Id on the specified date.
+// DeleteEvent removes the event with the specified eventId for userId on the given date.
+// If this is the last event on that date, the date key is removed. If the user has no more dates, the user is removed.
 func (c *InMemoryStorage) DeleteEvent(userId int, date models.Date, eventId int) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	if _, ok := c.records[userId]; !ok {
+	userDates, exists := c.records[userId]
+	if !exists {
 		return NewUserHasNoEventsError(userId)
 	}
 
-	eventsOnDate, ok := c.records[userId][date.String()]
-	if !ok {
+	dateKey := date.String()
+	eventsOnDate, exists := userDates[dateKey]
+	if !exists {
 		return NewEventNotFoundByDateError(date, userId)
 	}
 
-	index := -1
+	idx := -1
 	for i, e := range eventsOnDate {
 		if e.Id == eventId {
-			index = i
+			idx = i
 			break
 		}
 	}
-
-	if index == -1 {
+	if idx < 0 {
 		return NewEventNotFoundError(eventId)
 	}
 
-	copy(eventsOnDate[index:], eventsOnDate[index+1:])
+	copy(eventsOnDate[idx:], eventsOnDate[idx+1:])
 	eventsOnDate = eventsOnDate[:len(eventsOnDate)-1]
 
 	if len(eventsOnDate) == 0 {
-		delete(c.records[userId], date.String())
-		if len(c.records[userId]) == 0 {
+		delete(userDates, dateKey)
+		if len(userDates) == 0 {
 			delete(c.records, userId)
 		}
 	} else {
-		c.records[userId][date.String()] = eventsOnDate
+		c.records[userId][dateKey] = eventsOnDate
 	}
-
 	return nil
 }
 
-// GetEventsForDay returns all events for a user on a specific day.
-func (c *InMemoryStorage) GetEventsForDay(userId int, date models.Date) ([]models.Event, error) {
+// GetEvents returns all events for userId between from and to inclusive.
+// Iterates day-by-day, concatenating events for each date key found.
+func (c *InMemoryStorage) GetEvents(userId int, from, to time.Time) ([]models.Event, error) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
-	if _, ok := c.records[userId]; !ok {
+	userDates, exists := c.records[userId]
+	if !exists {
 		return nil, NewUserHasNoEventsError(userId)
 	}
 
-	eventsOnDate, ok := c.records[userId][date.String()]
-	if !ok || len(eventsOnDate) == 0 {
-		return nil, NewEventNotFoundByDateError(date, userId)
-	}
+	var result []models.Event
+	start := time.Date(from.Year(), from.Month(), from.Day(), 0, 0, 0, 0, from.Location())
+	end := time.Date(to.Year(), to.Month(), to.Day(), 0, 0, 0, 0, to.Location())
 
-	eventsCopy := make([]models.Event, len(eventsOnDate))
-	copy(eventsCopy, eventsOnDate)
-	return eventsCopy, nil
-}
-
-// GetEventsForWeek returns all events for a user in the week of the given date.
-func (c *InMemoryStorage) GetEventsForWeek(userId int, date models.Date) ([]models.Event, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	userEvents, ok := c.records[userId]
-	if !ok {
-		return nil, NewUserHasNoEventsError(userId)
-	}
-
-	weekday := int(date.Weekday())
-	if c.mondayBasedWeek {
-		if weekday == 0 {
-			weekday = 7
-		}
-		weekday -= 1
-	}
-
-	start := date.AddDate(0, 0, -weekday).Truncate(24 * time.Hour)
-
-	events := make([]models.Event, 0)
-	for i := 0; i < 7; i++ {
-		day := start.AddDate(0, 0, i)
-		key := models.Date{Time: day}.String()
-
-		if dayEvents, ok := userEvents[key]; ok {
-			events = append(events, dayEvents...)
-		}
-	}
-
-	return events, nil
-}
-
-// GetEventsForMonth returns all events for a user in the month of the given date.
-func (c *InMemoryStorage) GetEventsForMonth(userId int, date models.Date) ([]models.Event, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	userEvents, ok := c.records[userId]
-	if !ok {
-		return nil, NewUserHasNoEventsError(userId)
-	}
-
-	year, month := date.Year(), date.Month()
-	start := time.Date(year, month, 1, 0, 0, 0, 0, time.UTC)
-	end := start.AddDate(0, 1, 0)
-
-	events := make([]models.Event, 0)
-	for d := start; d.Before(end); d = d.AddDate(0, 0, 1) {
+	for d := start; !d.After(end); d = d.AddDate(0, 0, 1) {
 		key := models.Date{Time: d}.String()
-		if dayEvents, ok := userEvents[key]; ok {
-			events = append(events, dayEvents...)
+		if dayEvents, ok := userDates[key]; ok {
+			result = append(result, dayEvents...)
 		}
 	}
-
-	return events, nil
+	return result, nil
 }
