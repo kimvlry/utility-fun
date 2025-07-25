@@ -9,5 +9,5 @@ type Time struct {
 
 // String returns the Time formatted as HH:MM.
 func (d Time) String() string {
-	return d.Time.Format("15:04")
+	return d.Format("15:04")
 }
