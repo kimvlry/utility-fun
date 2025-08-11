@@ -4,16 +4,18 @@ A simple telnet utility for establishing TCP connections and interacting with re
 implemented in go
 
 ## Usage
+### Quickstart
+```bash 
+    go build -o gotelnet ./cmd/gotelnet  
+    ./gotelnet tcpbin.com 4242 --timeout=3s
+  ```
+### About args and flags
 - Accepts the following command-line parameters:
   - `host` (string): Target hostname or IP address (required)
   - `port` (int): Target TCP port (required)
   - `--timeout` (duration): Optional connection timeout (e.g. `--timeout=5s`, `--timeout=1m`). Default is 10 seconds.
   ```text
     gotelnet <host> <port> [--timeout=10s]
-  ```
-
-  ```bash 
-   gotelnet git:(main) ✗ gotelnet tcpbin.com 4242 --timeout=3s
   ```
 
 ## Details
