@@ -37,7 +37,7 @@ func (s *CalendarService) CreateEvent(userId string, e models.Event) (models.Eve
 
 // UpdateEvent updates an existing event for the specified user.
 // Delegates to repository UpdateEvent.
-func (s *CalendarService) UpdateEvent(userId string, e models.Event) (models.Event, error) {
+func (s *CalendarService) UpdateEvent(userId string, e *models.Event) (*models.Event, error) {
 	return s.repo.UpdateEvent(userId, e)
 }
 
