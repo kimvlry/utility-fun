@@ -17,13 +17,14 @@ Creates a local copy of a website (or a subset) that can be browsed offline.
 
 ### Advanced Options
 - Links recursion depth control (`--depth=N`)
-- Parallel downloads (`--workers=N`)
 - Timeout configuration (`--timeout=N`)
-- `-robots`: Honor robots.txt directives (optional)
-## Implementation 
+- **TODO**: `-robots`: Honor robots.txt directives (optional)
+
+
+## Implementation
 
 ### Architecture Components
-1. 
+1.
 
 ### Details
 - Proper error handling (network/filesystem)
