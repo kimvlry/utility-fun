@@ -9,3 +9,11 @@ type Event struct {
 	// TODO: time of the day
 	Name string `json:"event"` // Name is a name or brief description of the event.
 }
+
+func NewEvent(userId string, date Date, name string) *Event {
+	return &Event{
+		UserId: userId,
+		Date:   date,
+		Name:   name,
+	}
+}
