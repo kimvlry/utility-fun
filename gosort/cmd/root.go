@@ -108,8 +108,12 @@ Args:
 			return err
 		}
 
+		out := cmd.OutOrStdout()
 		for _, line := range sortedLines {
-			fmt.Println(line)
+			_, err := fmt.Fprintln(out, line)
+			if err != nil {
+				return err
+			}
 		}
 
 		return nil
