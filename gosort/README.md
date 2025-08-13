@@ -23,5 +23,27 @@ A simplified UNIX-style sort implementation in Go with support for common sortin
 - Passes `go vet` and `golint` checks
 - Comprehensive unit test coverage
 
-## Usage Examples
+## Usage
+### 1. build
 ```bash
+    go build -o gosort ./cmd/gosort
+    go install ./cmd/gosort
+```
+
+### 2. examples
+```bash
+    echo -e "3 apple\n2\n1 banana\n" | gosort 
+```
+
+```bash
+    gosort -k2       
+    3 apple
+    2
+    1 banana
+    
+    CtrlD
+```
+
+```bash
+    gosort cmd/example/example.txt -k2 -nr
+```
