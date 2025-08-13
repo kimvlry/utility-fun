@@ -10,29 +10,19 @@ import (
 	"strings"
 )
 
-var (
-	key     int
-	numeric bool
-	reverse bool
-	unique  bool
-
-	month            bool
-	ignoreTrailing   bool
-	checkIfSorted    bool
-	humanReadableNum bool
-)
+var cfg sorter.Config
 
 func init() {
 	RootCmd.PersistentFlags().BoolP("help", "", false, "disable default help")
 
-	RootCmd.Flags().IntVarP(&key, "key", "k", 0, "column number to sort by (starting from 1)")
-	RootCmd.Flags().BoolVarP(&numeric, "numeric", "n", false, "sort numerically")
-	RootCmd.Flags().BoolVarP(&reverse, "reverse", "r", false, "reverse sort order")
-	RootCmd.Flags().BoolVarP(&unique, "unique", "u", false, "output unique lines only")
-	RootCmd.Flags().BoolVarP(&month, "month", "M", false, "sort by month name")
-	RootCmd.Flags().BoolVarP(&ignoreTrailing, "ignore-trailing-blanks", "b", false, "ignore trailing blanks")
-	RootCmd.Flags().BoolVarP(&checkIfSorted, "check-if-sorted", "c", false, "checkIfSorted if input is sorted")
-	RootCmd.Flags().BoolVarP(&humanReadableNum, "human-readable-numeric", "h", false, "human readable numeric sort")
+	RootCmd.Flags().IntVarP(&cfg.Key, "key", "k", 0, "column number to sort by (starting from 1)")
+	RootCmd.Flags().BoolVarP(&cfg.Numeric, "numeric", "n", false, "sort numerically")
+	RootCmd.Flags().BoolVarP(&cfg.Reverse, "reverse", "r", false, "reverse sort order")
+	RootCmd.Flags().BoolVarP(&cfg.Unique, "unique", "u", false, "output unique lines only")
+	RootCmd.Flags().BoolVarP(&cfg.Month, "month", "M", false, "sort by month name")
+	RootCmd.Flags().BoolVarP(&cfg.IgnoreTrailing, "ignore-trailing-blanks", "b", false, "ignore trailing blanks")
+	RootCmd.Flags().BoolVarP(&cfg.CheckIfSorted, "check-if-sorted", "c", false, "checkIfSorted if input is sorted")
+	RootCmd.Flags().BoolVarP(&cfg.HumanNum, "human-readable-numeric", "h", false, "human readable numeric sort")
 }
 
 func Execute() {
@@ -48,7 +38,14 @@ func Execute() {
 var RootCmd = &cobra.Command{
 	Use:   "sort",
 	Short: "Sort lines of text",
-	Long: `Sort lines of text
+	Long: `Sort lines of text from a file or standard input.
+If no filename is provided, input is read from stdin.
+
+Examples:
+  gosort file.txt
+  gosort -n -k2 data.tsv
+  cat file.txt | gosort -r
+
 Args: 
     filename - name of file to read lines from`,
 	Args: cobra.RangeArgs(0, 1),
@@ -62,18 +59,7 @@ Args:
 	},
 
 	RunE: func(cmd *cobra.Command, args []string) error {
-		config := sorter.Config{
-			Key:            key,
-			Numeric:        numeric,
-			Reverse:        reverse,
-			Unique:         unique,
-			Month:          month,
-			IgnoreTrailing: ignoreTrailing,
-			CheckIfSorted:  checkIfSorted,
-			HumanNum:       humanReadableNum,
-		}
-
-		if err := config.Validate(); err != nil {
+		if err := cfg.Validate(); err != nil {
 			return err
 		}
 
@@ -103,7 +89,7 @@ Args:
 			return err
 		}
 
-		sortedLines, err := sorter.SortLines(lines, config)
+		sortedLines, err := sorter.SortLines(lines, cfg)
 		if err != nil {
 			return err
 		}
