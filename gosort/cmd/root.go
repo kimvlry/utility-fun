@@ -36,7 +36,7 @@ func Execute() {
 }
 
 var RootCmd = &cobra.Command{
-	Use:   "sort",
+	Use:   "gosort [filename] [options]",
 	Short: "Sort lines of text",
 	Long: `Sort lines of text from a file or standard input.
 If no filename is provided, input is read from stdin.
