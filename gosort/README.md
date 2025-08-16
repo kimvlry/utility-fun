@@ -16,12 +16,6 @@ A simplified UNIX-style sort implementation in Go with support for common sortin
 - `-c` - check if input is sorted (if not - notify)
 - `-h` - human-readable numeric sort (K - kilobyte, M - megabyte suffixes)
 
-## Implementation Details
-
-- Processes input from files or STDIN
-- Properly combines multiple flags (e.g., `-nr` for reverse numeric sort)
-- Passes `go vet` and `golint` checks
-- Comprehensive unit test coverage
 
 ## Usage
 ### 1. build
