@@ -31,15 +31,8 @@ It reads input from a file or stdin and prints lines that match a given pattern
 If [file] is omitted or set to "-" the input is read from stdin.
     
 Examples:
-  gogrep -F -i "todo" main.go
-
   echo -e "alpha\nBeta\nGAMMA" | gogrep -A 1 "alpha"
-
-  gogrep -n -C 2 'error|warn' /var/log/syslog
-
   gogrep -c "pattern" file.txt
-
-  cat data.txt | gogrep -n "foo" -
 `,
 
 	Args: cobra.RangeArgs(1, 2),

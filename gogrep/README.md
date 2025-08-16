@@ -18,18 +18,17 @@ A Go implementation of UNIX grep functionality with support for common filtering
 - `-c` - count matching lines only
 - `-n` - show line numbers
 
-## Implementation Details
-
-- Processes input from STDIN or files
-- Properly combines multiple flags (example: `-C 2 -n -i`)
-- Edge case handling:
-    - File boundaries for context
-    - Overlapping matches
-    - Repeated matches
-- Passes `gofmt` and `golint` checks
-- Comprehensive unit test coverage
-
-## Usage Examples
-
-Basic matching:
+## Usage 
+### build
+```bash 
+  go install ./cmd/gogrep  
+```
+### examples
 ```bash
+  echo "alpha\nBeta\nGAMMA" | gogrep -A 1 "alpha" 
+```
+
+```bash
+  gogrep -c "beta" test.txt  
+```
+
