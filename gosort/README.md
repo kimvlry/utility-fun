@@ -20,7 +20,6 @@ A simplified UNIX-style sort implementation in Go with support for common sortin
 ## Usage
 ### 1. build
 ```bash
-    go build -o gosort ./cmd/gosort
     go install ./cmd/gosort
 ```
 
