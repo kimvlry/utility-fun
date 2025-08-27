@@ -3,37 +3,21 @@
 A simplified `wget -m`-like tool for recursive website downloading with mirroring capabilities.
 Creates a local copy of a website (or a subset) that can be browsed offline.
 
-## Features
-
-### Core Functionality
-- Recursive downloading with configurable links depth
-- Supports all web resources:
-    - HTML pages
-    - CSS stylesheets
-    - JavaScript files
-    - Images and media
-- Domain-bound crawling (stays within original domain)
-- URL normalization and deduplication
-
-### Advanced Options
+### Options
 - Links recursion depth control (`--depth=N`)
 - Timeout configuration (`--timeout=N`)
-- **TODO**: `-robots`: Honor robots.txt directives (optional)
+- Parallel downloads (`--parallel=N`) - 
 
-
-## Implementation
-
-### Architecture Components
-1.
-
-### Details
-- Proper error handling (network/filesystem)
-- Link cycling detection
-- Memory efficiency
-- Code passes `golint`, `go vet`
-- Comprehensive unit test coverage
+TODO:
+- robots.txt support
 
 ## Usage Examples
-
-Mirroring with set depth, timeout and num of parallel download workers:
+1.build
 ```bash
+  go install ./cmd/gowget
+```
+
+2. examples
+```
+gowget https://github.com/ --depth=0 --parallel=10 --outdir=./mirror --timeout=10
+```
