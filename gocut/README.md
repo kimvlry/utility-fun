@@ -1,37 +1,35 @@
 # GoCut - Column Extraction Tool
 
-A Go implementation of UNIX cut functionality with support for field selection by column.
+A Go implementation of UNIX `cut` functionality with support for field selection by column.
 
-## Features
+## Supported flags
 
 ### Core Functionality
-- `-f "fields"` - select fields/ranges (e.g., "1,3-5")
-- `-d "delimiter"` - specify custom delimiter (default: tab)
-- `-s` - suppress lines without delimiters
+- `-f "fields"` — select fields/ranges (e.g., `1,3-5`)
+- `-d "delimiter"` — specify custom delimiter (default: tab `\t`)
+- `-s` — suppress lines without delimiters
 
-### Advanced Capabilities
-- Handles complex field specifications:
-    - Single fields (e.g., "3")
-    - Ranges (e.g., "2-4")
-    - Mixed combinations (e.g., "1,3-5,7")
-- Gracefully handles out-of-bound columns
-- Efficient large file processing
+### Field Specification
+- Single fields (e.g., `3`)
+- Ranges (e.g., `2-4`)
+- Mixed combinations (e.g., `1,3-5,7`)
+- Out-of-bound fields are ignored gracefully
 
-## Implementation Details
-
-- Processes input from STDIN
-- Optimized for performance with:
-    - ,
-- Robust error handling:
-    - Invalid field specifications
-    - Malformed input
-- Passes all Go quality checks:
-    - `gofmt`
-    - `golint`
-    - `go vet`
-- Comprehensive unit test coverage
-
-## Usage Examples
-
-Basic column extraction:
+## Usage
+### build
 ```bash
+  go install ./cmd/gocut
+```
+
+### examples
+```
+gocut -f 2,4 -d "," data.csv
+```
+
+```
+echo "a:b:c" | gocut -f 2 -d ":"
+```
+
+```
+cat data.csv | gocut -f 1,3 -d ","
+```
